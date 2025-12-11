@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  nginx:
+    build: .
+    ports:
+      - "8080:80"
+      - "1935:1935"
+    volumes:
+      - ./web:/var/www/web:ro
+      - ./vod:/var/www/vod:ro
+      - hls_data:/var/www/hls
+    restart: unless-stopped
+volumes:
+  hls_data:

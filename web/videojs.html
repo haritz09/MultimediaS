@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Video.js - Adaptive HLS</title>
+		<link href="https://unpkg.com/video.js@8.6.1/dist/video-js.css" rel="stylesheet" />
+		<script src="https://unpkg.com/video.js@8.6.1/dist/video.min.js"></script>
+		<script src="https://unpkg.com/@videojs/http-streaming@3.2.0/dist/videojs-http-streaming.min.js"></script>
+		<style>
+			body{font-family:system-ui,Segoe UI,Arial;margin:2rem}
+			.player-wrap{position:relative;width:100%;max-width:960px}
+			video{width:100%;height:auto;background:#000}
+			.gear{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:18px;background:rgba(17,17,17,.85);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:1000}
+			.gear:after{content:"\2699";font-size:20px}
+			.menu{position:absolute;top:56px;right:12px;background:#111;color:#fff;border:1px solid #333;border-radius:8px;min-width:200px;display:none;z-index:1000}
+			.menu.open{display:block}
+			.menu h4{margin:8px 12px;font-size:14px}
+			.menu button{width:100%;text-align:left;padding:8px 12px;border:none;background:transparent;color:#fff;cursor:pointer}
+			.menu button:hover{background:#222}
+		</style>
+</head>
+<body>
+		<div class="player-wrap">
+			<div class="gear" id="vjsGear" title="Kalitatea"></div>
+			<div class="menu" id="vjsMenu"><h4>Kalitatea</h4><div id="vjsLevels"></div></div>
+			<video id="player" class="video-js vjs-default-skin" controls preload="auto"></video>
+		</div>
+	<script>
+				const player = videojs('player', {fluid:true});
+				const masterUrl = 'http://localhost:8080/vod/hls/master.m3u8';
+
+				async function buildMenu(){
+					const menu = document.getElementById('vjsMenu');
+					const levelsDiv = document.getElementById('vjsLevels');
+					levelsDiv.innerHTML = '';
+					// Auto (master)
+					const autoBtn = document.createElement('button');
+					autoBtn.textContent = 'Auto';
+					autoBtn.onclick = () => { player.src({src: masterUrl, type: 'application/x-mpegURL'}); menu.classList.remove('open'); };
+					levelsDiv.appendChild(autoBtn);
+					try{
+						const res = await fetch(masterUrl, {cache:'no-store'});
+						const text = await res.text();
+						const lines = text.split(/\r?\n/);
+						for(let i=0;i<lines.length;i++){
+							const l = lines[i];
+							if(l.startsWith('#EXT-X-STREAM-INF')){
+								const info = l;
+								let url = '';
+								for(let j=i+1;j<lines.length;j++){
+									if(lines[j].trim()!=='' && !lines[j].startsWith('#')){ url = lines[j].trim(); break; }
+								}
+								const resMatch = info.match(/RESOLUTION=(\d+)x(\d+)/);
+								const bwMatch = info.match(/BANDWIDTH=(\d+)/);
+								const height = resMatch ? parseInt(resMatch[2],10) : undefined;
+								const bw = bwMatch ? Math.round(parseInt(bwMatch[1],10)/1000)+' kbps' : '';
+								const btn = document.createElement('button');
+								btn.textContent = `${height||'?'}p ${bw}`.trim();
+								const absUrl = new URL(url, masterUrl).toString();
+								btn.onclick = () => { player.src({src: absUrl, type: 'application/x-mpegURL'}); menu.classList.remove('open'); };
+								levelsDiv.appendChild(btn);
+							}
+						}
+					}catch(e){ console.error('No se pudo leer master.m3u8', e); }
+				}
+
+				document.getElementById('vjsGear').addEventListener('click', (e)=>{ e.stopPropagation(); document.getElementById('vjsMenu').classList.toggle('open'); });
+				document.addEventListener('click', ()=>{ document.getElementById('vjsMenu').classList.remove('open'); });
+
+				(function init(){
+					const url = 'http://localhost:8080/vod/hls/master.m3u8';
+					player.src({src: url, type: 'application/x-mpegURL'});
+					setTimeout(buildMenu, 800);
+				})();
+	</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Demo</title>
+    <style>
+        body {font-family: system-ui, Segoe UI, Arial; margin: 0; background:#f6f7f9}
+        header {padding:16px 24px; background:#111; color:#fff}
+        .tabs {display:flex; gap:12px; padding:12px 24px; background:#fff; border-bottom:1px solid #e5e7eb}
+        .tab {padding:10px 16px; border:1px solid #ddd; border-radius:8px; background:#fff; cursor:pointer}
+        .tab.active {background:#0a7; color:#fff; border-color:#0a7}
+        .content {padding:24px}
+        .panel {display:none}
+        .panel.active {display:block}
+        .player-wrap {position:relative; width:100%; max-width:960px}
+        video {width:100%; height:auto; background:#000}
+        /* Engranaje eta kalitate-menua */
+        .gear {position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:18px; background:rgba(17,17,17,.85); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:1000}
+        .gear:after {content:"\2699"; font-size:20px}
+        .menu {position:absolute; top:56px; right:12px; background:#111; color:#fff; border:1px solid #333; border-radius:8px; min-width:200px; display:none; z-index:1000}
+        .menu.open {display:block}
+        .menu h4 {margin:8px 12px; font-size:14px}
+        .menu button {width:100%; text-align:left; padding:8px 12px; border:none; background:transparent; color:#fff; cursor:pointer}
+        .menu button:hover {background:#222}
+        .grid {display:grid; grid-template-columns:1fr; gap:24px}
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Multimedia Streaming: HTML5, Video.js eta Live Streaming</h1>
+    </header>
+    <nav class="tabs">
+        <button class="tab active" data-target="html5">HTML5 Player</button>
+        <button class="tab" data-target="videojs">Video.js Player</button>
+        <button class="tab" data-target="live">Live HLS</button>
+    </nav>
+    <section class="content">
+        <div id="html5" class="panel active">
+            <h2>HTML5 Video</h2>
+            <div class="player-wrap">
+                <div class="gear" id="html5Gear" title="Kalitatea"></div>
+                <div class="menu" id="html5Menu"><h4>Kalitatea</h4><div id="html5Levels"></div></div>
+                <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+                <video id="html5Video" controls preload="auto" poster=""></video>
+            </div>
+        </div>
+
+                <div id="videojs" class="panel">
+                    <h2>Video.js</h2>
+                    <iframe src="/videojs.html" style="width:100%;height:720px;border:0"></iframe>
+                </div>
+
+        <div id="live" class="panel">
+            <h2>Live HLS</h2>
+            <iframe src="/live.html" style="width:100%;height:600px;border:0"></iframe>
+        </div>
+    </section>
+
+    <script>
+        const tabs = document.querySelectorAll('.tab');
+        const panels = document.querySelectorAll('.panel');
+        tabs.forEach(btn => btn.addEventListener('click', () => {
+            tabs.forEach(b => b.classList.remove('active'));
+            panels.forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(btn.dataset.target).classList.add('active');
+        }));
+
+                // HTML5 HLS eta engranajea (Hls.js level switching)
+                const html5Video = document.getElementById('html5Video');
+                const html5Menu = document.getElementById('html5Menu');
+                const html5Gear = document.getElementById('html5Gear');
+                const html5Levels = document.getElementById('html5Levels');
+                let hlsInstance = null;
+
+                function initHtml5Hls(){
+                    const src = 'http://localhost:8080/vod/hls/master.m3u8';
+                    if (Hls.isSupported()) {
+                        hlsInstance = new Hls({lowLatencyMode:false});
+                        hlsInstance.loadSource(src);
+                        hlsInstance.attachMedia(html5Video);
+                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => renderHtml5Levels());
+                    } else if (html5Video.canPlayType('application/vnd.apple.mpegurl')) {
+                        html5Video.src = src;
+                    } else {
+                        console.error('HLS ez da onartzen nabigatzailean');
+                    }
+                }
+
+                function renderHtml5Levels(){
+                    html5Levels.innerHTML = '';
+                    const addBtn = (label, onClick) => { const b = document.createElement('button'); b.textContent = label; b.onclick = onClick; html5Levels.appendChild(b); };
+                    // Auto
+                    addBtn('Auto', () => { if (hlsInstance) hlsInstance.currentLevel = -1; html5Menu.classList.remove('open'); });
+                    // Levels
+                    const levels = (hlsInstance && hlsInstance.levels) ? hlsInstance.levels : [];
+                    levels.forEach((lvl, idx) => {
+                        const h = (lvl.height || '?') + 'p';
+                        const br = Math.round((lvl.bitrate||0)/1000) + ' kbps';
+                        addBtn(`${h} (${br})`, () => { if (hlsInstance) hlsInstance.currentLevel = idx; html5Menu.classList.remove('open'); });
+                    });
+                }
+
+                initHtml5Hls();
+                html5Gear.addEventListener('click', (e) => { e.stopPropagation(); html5Menu.classList.toggle('open'); });
+                // Close menus when clicking outside
+                document.addEventListener('click', () => {
+                    html5Menu.classList.remove('open');
+                    const vjsMenuEl = document.getElementById('vjsMenu');
+                    if (vjsMenuEl) vjsMenuEl.classList.remove('open');
+                });
+    </script>
+
+</body>
+</html>

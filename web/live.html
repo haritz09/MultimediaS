@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Live HLS</title>
+	<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+		<style>
+			body{font-family:system-ui,Segoe UI,Arial;margin:0}
+			.page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+			.player-wrap{position:relative;max-width:960px;width:100%;margin:0 auto}
+			video{display:block;width:100%;height:auto;background:#000;object-fit:contain}
+		</style>
+</head>
+<body>
+		<div class="page">
+			<div class="player-wrap">
+			<video id="livePlayer" controls autoplay muted></video>
+			</div>
+		</div>
+	<script>
+		function playHls(el, src){
+			if (Hls.isSupported()) { const h = new Hls({lowLatencyMode:true}); h.loadSource(src); h.attachMedia(el); }
+			else if (el.canPlayType('application/vnd.apple.mpegurl')) { el.src = src; }
+			else { console.error('HLS no soportado'); }
+		}
+		// Autoplay using fixed STREAM_KEY and non-nested HLS output
+		const STREAM_KEY = 'STREAM_KEY';
+		const url = `http://localhost:8080/hls/${encodeURIComponent(STREAM_KEY)}.m3u8`;
+		playHls(document.getElementById('livePlayer'), url);
+	</script>
+</body>
+</html>
